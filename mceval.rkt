@@ -30,6 +30,12 @@
         ((begin? exp)
          (eval-sequence (begin-actions exp) env))
         ((cond? exp) (mceval (cond->if exp) env))
+        ((and? exp) (eval-and exp env))
+        ((or? exp) (eval-or exp env))
+        ((let? exp) (let-eval exp env))
+        ((delay? exp)
+         (make-procedure '() (cdr exp) env))
+        ((force? exp) (mceval (cdr exp) env))
         ((application? exp)
          (mcapply (mceval (operator exp) env)
                   (list-of-values (operands exp) env)))
@@ -57,10 +63,46 @@
       (cons (mceval (first-operand exps) env)
             (list-of-values (rest-operands exps) env))))
 
+
+
+(define (let-bindings exp)
+  (cadr exp))
+(define (let-vars exp)
+  (map car (let-bindings exp)))
+(define (let-vals exp)
+  (map cadr (let-bindings exp)))
+(define (let-body exp)
+  (cddr exp))
+(define (let-eval exp env)
+ (eval-sequence (let-body exp) (extend-environment (let-vars exp) (list-of-values (let-vals exp) env) env)))
+
+
+  
+  
+			
+
+
+
 (define (eval-if exp env)
   (if (true? (mceval (if-predicate exp) env))
       (mceval (if-consequent exp) env)
       (mceval (if-alternative exp) env)))
+
+(define (eval-and exp env)
+  (cond
+    ((null? (cdr exp)) #t)
+    ((false? (mceval (cadr exp) env)) false)
+    ((null? (cddr exp)) (mceval (cadr exp) env))
+    (else (eval-and (cdr exp) env))))
+
+(define (eval-or exp env)
+  (cond
+    ((null? (cdr exp)) #f)
+    ((true? (mceval (cadr exp) env)) true)
+    ((null? (cddr exp)) (mceval (cadr exp) env))
+    (else (eval-or (cdr exp) env))))
+    
+
 
 (define (eval-sequence exps env)
   (cond ((last-exp? exps) (mceval (first-exp exps) env))
@@ -78,6 +120,8 @@
                     (mceval (definition-value exp) env)
                     env)
   'ok)
+
+
 
 ;;;SECTION 4.1.2
 
@@ -106,6 +150,13 @@
 (define (assignment-variable exp) (cadr exp))
 
 (define (assignment-value exp) (caddr exp))
+
+(define (and? exp) (tagged-list? exp 'and))
+(define (or? exp) (tagged-list? exp 'or))
+(define (let? exp) (tagged-list? exp 'let))
+
+(define (delay? exp) (tagged-list? exp 'delay))
+(define (force? exp) (tagged-list? exp 'force))
 
 
 (define (definition? exp)
@@ -207,6 +258,8 @@
 (define (false? x)
   (eq? x false))
 
+(define (not x) (if x false true))
+
 
 (define (make-procedure parameters body env)
   (list 'procedure parameters body env))
@@ -300,13 +353,31 @@
 
 (define (primitive-implementation proc) (cadr proc))
 
+(define (error-primitive)
+   (error "Metacircular Interpreter Aborted"))
+
+
 (define primitive-procedures
   (list (list 'car car)
         (list 'cdr cdr)
         (list 'cons cons)
         (list 'null? null?)
 ;;      more primitives
+        (list '+ +)
+        (list '* *)
+        (list '- -)
+        (list '/ /)
+        (list '< <)
+        (list '<= <=)
+        (list '= =)
+        (list '>= >=)
+        (list '> >)
+        (list 'error error-primitive)
+        (list 'not not)
+
         ))
+
+
 
 (define (primitive-procedure-names)
   (map car
