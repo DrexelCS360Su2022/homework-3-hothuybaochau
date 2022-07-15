@@ -13,6 +13,7 @@ Problem 1: 15m
 Problem 2: 5h
 
 Problem 3: 4h45m
+
 The lecture notes are the main keys that helped me to solve this and my solution is typically following the notes.
 
 Problem 4: 2h20m
